@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 shelf.py - a local bookshelf an AI can actually read from: public-domain classics from Project Gutenberg
-(plus any EPUB/PDF/TXT you own), stored as Markdown, searchable, with bookmarks. Standard library only
-(PDF import also needs `pdftotext`).
+(plus any EPUB/HTML/TXT/MD you own; convert PDFs to .txt with pdftotext first), stored as Markdown,
+searchable, with bookmarks. Standard library only; it never runs other programs.
 
 Shelf folder: $READING_SHELF, or ~/ReadingShelf. Books download from Gutenberg's mirror ($PG_MIRROR).
 
@@ -10,7 +10,7 @@ Shelf folder: $READING_SHELF, or ~/ReadingShelf. Books download from Gutenberg's
   shelf.py list [words]               what's on the shelf (filter by author/title words)
   shelf.py get "<title or author>"    search Project Gutenberg (English) -> numbered matches
   shelf.py get <id> [<id> ...]        download those Gutenberg books onto the shelf
-  shelf.py add <file|folder>          import your own EPUB / HTML / TXT / MD / PDF ("Author - Title.ext" helps)
+  shelf.py add <file|folder>          import your own EPUB / HTML / TXT / MD ("Author - Title.ext" helps)
   shelf.py toc "<book>"               chapters/sections, numbered
   shelf.py find "<words>" [--in "<book or author>"] [--n 5]
                                       exact phrase; if none, all the words close together
@@ -21,7 +21,7 @@ Shelf folder: $READING_SHELF, or ~/ReadingShelf. Books download from Gutenberg's
 
 "<book>" is any unique set of words from the author/title ("plotinus enneads 1", "delay divine").
 """
-import os, sys, re, json, csv, time, html, zipfile, shutil, subprocess, posixpath, unicodedata, urllib.request
+import os, sys, re, json, csv, time, html, zipfile, shutil, posixpath, unicodedata, urllib.request
 from html.parser import HTMLParser
 
 LIB = os.path.expanduser(os.environ.get("READING_SHELF", "~/ReadingShelf"))
@@ -212,9 +212,7 @@ def main():
                 if ext == "epub": t, au, body = epub_md(f); shelve(t or gt, au or ga, strip_pg(body), "from " + os.path.basename(f))
                 elif ext in ("html", "htm", "xhtml"): shelve(gt, ga, html_md(open(f, encoding="utf-8", errors="replace").read()), "from " + os.path.basename(f))
                 elif ext in ("txt", "md"): raw = open(f, encoding="utf-8", errors="replace").read(); shelve(gt, ga, strip_pg(raw), "from " + os.path.basename(f))
-                elif ext == "pdf":
-                    if not shutil.which("pdftotext"): print("skip %s: PDF needs pdftotext (poppler)" % f); continue
-                    shelve(gt, ga, subprocess.run(["pdftotext", f, "-"], capture_output=True, text=True).stdout, "from " + os.path.basename(f))
+                elif ext == "pdf": print("skip %s: convert it first with  pdftotext \"%s\" \"%s.txt\"  then add the .txt" % (f, f, os.path.splitext(f)[0]))
                 else: print("skip %s (.%s)" % (f, ext))
             except Exception as e: print("failed %s: %s" % (f, e))
     elif cmd == "toc":

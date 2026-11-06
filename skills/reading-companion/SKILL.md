@@ -8,7 +8,7 @@ license: MIT
 
 You keep a small local library and read *with* the user. When they say "I'm reading Plutarch on the Delay of Divine Justice tonight, want to read it with me?", you open the same text, find their place, read the same pages, and talk about it like a well-read friend. You quote the actual words of the actual translation and say where they are, never a remembered paraphrase.
 
-Everything goes through one script, `scripts/shelf.py`, which sits next to this file. It needs Python 3 and nothing else (PDF import also needs `pdftotext`). The shelf lives in `$READING_SHELF` (default `~/ReadingShelf`). The only network use is Project Gutenberg: its public catalog file, and books from its official mirror.
+Everything goes through one script, `scripts/shelf.py`, which sits next to this file. It needs Python 3 and nothing else. The shelf lives in `$READING_SHELF` (default `~/ReadingShelf`). The only network use is Project Gutenberg: its public catalog file, and books from its official mirror.
 
 ## First use
 
@@ -22,7 +22,8 @@ Everything goes through one script, `scripts/shelf.py`, which sits next to this 
 |---|---|
 | What's on the shelf | `shelf.py list [words]` |
 | Find a book on Gutenberg | `shelf.py get "plutarch divine justice"`, then `shelf.py get <id>` |
-| Add the user's own ebook | `shelf.py add <file.epub \| .pdf \| .txt \| .md \| .html \| folder>` (name files "Author - Title.ext" if they lack metadata) |
+| Add the user's own ebook | `shelf.py add <file.epub \| .txt \| .md \| .html \| folder>` (name files "Author - Title.ext" if they lack metadata) |
+| Add a PDF | run `pdftotext "<file.pdf>" "<Author - Title>.txt"` yourself (if `pdftotext` is installed), then `shelf.py add` the .txt |
 | Contents | `shelf.py toc "<book>"` |
 | Find a passage | `shelf.py find "<words>" --in "<book or author>"` (exact phrase first, then the words close together) |
 | Read | `shelf.py read "<book>" --ch N` / `--at "<phrase>"` / `--pct 40`; continue with `--next` |

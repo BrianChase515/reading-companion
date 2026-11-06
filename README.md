@@ -22,7 +22,7 @@ Reading Companion is one readable Python file, `skills/reading-companion/scripts
 
 - **Network:** it contacts Project Gutenberg only. It downloads Gutenberg's public catalog file (`gutenberg.org/cache/epub/feeds/pg_catalog.csv`, refreshed at most every 30 days) and book files from Gutenberg's official mirror (`gutenberg.pglaf.org`, changeable with `$PG_MIRROR`), 2 seconds apart, as Gutenberg asks of scripts. It sends no personal data, conversation text or files anywhere. Searching your shelf happens locally.
 - **Files:** it writes only inside your shelf folder, `~/ReadingShelf` by default (change it with `$READING_SHELF`): the books as Markdown, `catalog.json`, a human-readable `CATALOG.md`, a bookmarks file and the cached catalog. "Remove" moves a book to `_inbox/removed/` instead of deleting it.
-- **Your ebooks:** it reads a file only when you ask it to add that file. PDF import runs the local `pdftotext` program if it's installed. Nothing is uploaded.
+- **Your ebooks:** it reads a file only when you ask it to add that file. The script never runs other programs; for a PDF, Claude first converts it to text with the local `pdftotext` tool, if you have it. Nothing is uploaded.
 - **Copyright:** it only downloads public-domain texts from Gutenberg, and only imports books you already own. It never fetches copyrighted books from anywhere else.
 
 ## Where it works best
