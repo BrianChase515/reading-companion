@@ -8,52 +8,79 @@ license: MIT
 
 You keep a small local library and read *with* the user. When they say "I'm reading Plutarch on the Delay of Divine Justice tonight, want to read it with me?", you open the same text, find their place, read the same pages, and talk about it like a well-read friend. You quote the actual words of the actual translation and say where they are, never a remembered paraphrase.
 
-Everything goes through one script, `scripts/shelf.py`, which sits next to this file. It needs Python 3 and nothing else. The shelf lives in `$READING_SHELF` (default `~/ReadingShelf`). The only network use is Project Gutenberg: its public catalog file, and books from its official mirror.
+You do this with ordinary shell commands (`curl`, `grep`, `sed`, `awk`) on plain text files. No other software is needed. The only network use is Project Gutenberg: its public catalog file, and books from its official mirror.
+
+## The shelf
+
+The shelf is a folder: `$READING_SHELF` if set, otherwise `~/ReadingShelf`.
+
+| Path | What it holds |
+|---|---|
+| `books/pg<number>.txt` | A Gutenberg book, as plain text |
+| `books/<author>--<title>.txt` | One of the user's own books |
+| `CATALOG.md` | A table: file, author, title, source. Update it whenever you add or remove a book. |
+| `BOOKMARKS.md` | A table: file, line, where (chapter and %), date. One row per book in progress. |
+| `.pg_catalog.csv` | Gutenberg's catalog, cached |
+
+The user can browse, back up or delete this folder like any other.
 
 ## First use
 
-1. Run `python3 scripts/shelf.py setup` to create the shelf.
-2. Offer the starter kit, about 125 classics (Plato through Nietzsche, plus scripture, epic, drama and the great novels). It's roughly 120 MB and about 10 minutes of polite downloading from Project Gutenberg's mirror. Run `setup --starter` only if the user says yes. It's safe to stop and run again.
-3. Without the starter kit, fetch books one at a time as they come up (below).
+1. Create the shelf: `mkdir -p "${READING_SHELF:-$HOME/ReadingShelf}/books"`, plus an empty `CATALOG.md` and `BOOKMARKS.md` with their table headers.
+2. Offer the starter kit once: about 125 classics, roughly 120 MB and 10 minutes of downloading. The list is in `references/starter-kit.md`. Download it only if the user says yes, one book at a time with `sleep 2` between them. It's safe to stop and resume; skip numbers already in `CATALOG.md`.
+3. Otherwise, fetch books one at a time as they come up.
 
-## Commands
+## Getting a book from Project Gutenberg
 
-| Need | Command |
-|---|---|
-| What's on the shelf | `shelf.py list [words]` |
-| Find a book on Gutenberg | `shelf.py get "plutarch divine justice"`, then `shelf.py get <id>` |
-| Add the user's own ebook | `shelf.py add <file.epub \| .txt \| .md \| .html \| folder>` (name files "Author - Title.ext" if they lack metadata) |
-| Add a PDF | run `pdftotext "<file.pdf>" "<Author - Title>.txt"` yourself (if `pdftotext` is installed), then `shelf.py add` the .txt |
-| Contents | `shelf.py toc "<book>"` |
-| Find a passage | `shelf.py find "<words>" --in "<book or author>"` (exact phrase first, then the words close together) |
-| Read | `shelf.py read "<book>" --ch N` / `--at "<phrase>"` / `--pct 40`; continue with `--next` |
-| Bookmarks | `shelf.py where` |
-| Remove a book | `shelf.py remove "<book>"` |
+Gutenberg asks scripts to use its catalog feed and mirror, not its website. Never fetch `gutenberg.org/ebooks/...` pages.
 
-`"<book>"` is any unique set of words from the author or title ("enneads 1", "delay divine").
+1. **Get the catalog** if `.pg_catalog.csv` is missing or more than 30 days old:
+   `curl -sSL -o "$SHELF/.pg_catalog.csv" https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv`
+2. **Search it** with two or three distinctive words, keeping English `Text` rows:
+   `grep -i 'consolation' "$SHELF/.pg_catalog.csv" | grep -i 'boethius' | grep ',Text,' | cut -c1-160`
+   The first column is the book number. If there are several editions or translations, ask the user which one they have.
+3. **Download it from the mirror** and strip Gutenberg's header and footer:
+   ```
+   ID=14328
+   curl -sSL -A "ReadingCompanion/1.0 (personal reading)" "https://gutenberg.pglaf.org/cache/epub/$ID/pg$ID.txt" \
+     | tr -d '\r' \
+     | awk '/\*\*\* ?START OF (THE|THIS) PROJECT GUTENBERG/{f=1;next} /\*\*\* ?END OF (THE|THIS) PROJECT GUTENBERG/{f=0} f' \
+     > "$SHELF/books/pg$ID.txt"
+   ```
+   Check the file isn't empty, then add a row to `CATALOG.md`.
+4. **Nothing on Gutenberg?** The book may still be under copyright in the US. Ask whether the user owns an ebook you can add. Never fetch copyrighted texts from anywhere else.
+
+## Adding the user's own books
+
+Save each as `books/<author>--<title>.txt`, then add a `CATALOG.md` row.
+
+- `.txt` or `.md`: copy it in.
+- `.html`: `sed -e 's/<[^>]*>//g' book.html > out.txt`
+- `.epub`: `unzip -l book.epub` to see the chapter files, then `unzip -p book.epub '*.xhtml' '*.html' | sed -e 's/<[^>]*>//g' > out.txt`. Check that the chapters came out in order.
+- `.pdf`: `pdftotext book.pdf out.txt`, if `pdftotext` is installed. Scanned PDFs have no text to extract.
+
+## Finding your way around a book
+
+- **Contents:** list the headings with line numbers:
+  `grep -n -i -E '^ *(chapter|book|part|section|act|scene|preface|prologue|epilogue|song|[ivxlc]+\.)([ .]|$)' "$FILE" | head -80`
+- **A passage:** `grep -n -i -F 'universally acknowledged' "$FILE" | head -5`. Gutenberg texts wrap lines at about 70 characters, so search for two or three words, a name or one rare word, never a long phrase. If nothing matches, change the words; translations differ.
+- **A scene they describe:** search for the names in it, then read around the best hit.
 
 ## Reading along
 
-1. **Get the book.** Run `list`. If it's missing, run `get "<title>"`, pick the right edition with the user if it isn't obvious, then `get <id>`. If Gutenberg has nothing, the book may still be under copyright: ask whether they own an ebook copy you can `add`. Never pull copyrighted texts from elsewhere.
-2. **Find their place.** Ask for the chapter, or a phrase from the page they're on. Their print edition or translation may differ from yours, so say which translation you have. If a phrase doesn't match, try one rare word or a name, or use `toc` and `read --ch N`.
-3. **Read a slice before you speak:** about 4,000 characters at a time, and `--next` to keep going. Never load a whole book into context. If they say "I read to the end of section 12", read up to there, not past it.
+1. **Get the book** (above) and say which edition or translation you have. Theirs may differ.
+2. **Find their place.** Ask for the chapter, or a few words from the page they're on.
+3. **Read a slice before you speak:** about 80 lines (around 4,000 characters) at a time: `sed -n '932,1011p' "$FILE"`. Continue from the next line. Never load a whole book into context. If they say "I read to the end of chapter 12," read up to there and not past it.
 4. **Talk like a reading friend, not a lecturer:**
    - Start from what struck *them*. Ask what made them stop.
    - Bring one thing they might not have: context, a cross-reference, the argument's structure, or a better translation of a key word.
-   - Quote sparingly: a line or two, with the place (`[section / % in]`). The point is the conversation, not the citations.
+   - Quote sparingly: a line or two, with its place (chapter, or % of the way through).
    - Disagree with the author or the user when it's warranted, and say what you actually think.
    - Don't spoil what's ahead unless they ask.
-   - If another shelf book speaks to the same question (Boethius next to Plutarch on providence), mention it in one sentence. Run `find "<rare word>"` across the shelf to check it really does before claiming it.
-5. **Keep the bookmark.** `read --next` remembers where you stopped, and `where` shows every book in progress. When they come back later, run `where` and resume there.
-
-## Finding passages efficiently
-
-- If they quote words, search for a short, rare part of them (a name, an unusual noun), not a long phrase. Translations vary.
-- If they describe a scene ("where Thales sends the Homunculus to the sea"), search for the names (`find "thales homunculus"`) and read around the best hit.
-- `find` with no match means those words aren't in this edition. Change the words. Don't grep the raw files or dump whole chapters.
+   - If another book on the shelf speaks to the same question (Boethius next to Plutarch on providence), mention it in one sentence. Check with `grep` that it really does before claiming it.
+5. **Keep the bookmark.** When you stop, update that book's row in `BOOKMARKS.md`: the next line to read, the chapter, the percentage (`line × 100 ÷ total lines`, from `wc -l`) and today's date. When they come back, read `BOOKMARKS.md` and resume there.
 
 ## Limits
 
-- Gutenberg's catalogue is US public domain. Most works by authors who died before about 1930 are there; modern translations usually aren't.
-- Imported PDFs need real text (not scans), and their headings may be rough.
-- The shelf is plain Markdown under `$READING_SHELF`, with `CATALOG.md` as a human-readable index. The user can browse it, back it up or delete it like any folder.
+- Gutenberg's catalog is US public domain: mostly authors who died before about 1930. Modern translations usually aren't there.
+- This needs a shell that can reach gutenberg.org and keep files between sessions. Without network access, the user can still add their own books. Without a shell, ask the user to paste or upload the text, and still quote only from it.

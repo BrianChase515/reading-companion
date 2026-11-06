@@ -10,43 +10,48 @@ Ask an AI about a passage and it answers from memory. Quotes drift, translations
 
 ## What it does
 
-- **A local shelf** of public-domain classics from Project Gutenberg, plus any EPUB, PDF, HTML, Markdown or TXT you own, stored as plain Markdown with chapter headings.
+- **A local shelf** of public-domain classics from Project Gutenberg, plus any EPUB, PDF, HTML, Markdown or TXT you own, stored as plain text you can open yourself.
 - **An optional starter kit** of about 125 classics: Plato, Aristotle, Plotinus, the Stoics, Plutarch, Augustine, Dante, Montaigne, Spinoza, Hume, Kant, Nietzsche, scripture, epic, drama and the great novels. About 120 MB, offered once, downloaded only if you say yes.
 - **Search** for an exact phrase, falling back to "these words close together", plus a table of contents.
 - **Reading a slice at a time**, so Claude reads exactly what you've read, with bookmarks that persist between sessions.
 - **A friend, not a lecturer:** it starts from what struck you, adds one thing you might not have, disagrees when it's warranted, and doesn't spoil what's ahead.
 
+## Two editions
+
+- **Directory edition (this branch, `main`):** instructions only. Claude does everything with standard shell commands (`curl`, `grep`, `sed`, `awk`) on plain text files. This is the version in Anthropic's Claude directory.
+- **Full edition ([`full` branch](https://github.com/BrianChase515/reading-companion/tree/full)):** the same skill plus `shelf.py`, a small standard-library Python tool that converts Gutenberg's HTML with clean chapter headings, imports EPUBs properly, and searches across the whole shelf in one command.
+
 ## What it runs, downloads and stores
 
-Reading Companion is one readable Python file, `skills/reading-companion/scripts/shelf.py`, using only the standard library. Claude runs it with `python3` when you ask about a book.
-
-- **Network:** it contacts Project Gutenberg only. It downloads Gutenberg's public catalog file (`gutenberg.org/cache/epub/feeds/pg_catalog.csv`, refreshed at most every 30 days) and book files from Gutenberg's official mirror (`gutenberg.pglaf.org`, changeable with `$PG_MIRROR`), 2 seconds apart, as Gutenberg asks of scripts. It sends no personal data, conversation text or files anywhere. Searching your shelf happens locally.
-- **Files:** it writes only inside your shelf folder, `~/ReadingShelf` by default (change it with `$READING_SHELF`): the books as Markdown, `catalog.json`, a human-readable `CATALOG.md`, a bookmarks file and the cached catalog. "Remove" moves a book to `_inbox/removed/` instead of deleting it.
-- **Your ebooks:** it reads a file only when you ask it to add that file. The script never runs other programs; for a PDF, Claude first converts it to text with the local `pdftotext` tool, if you have it. Nothing is uploaded.
+- **Network:** Project Gutenberg only. It downloads Gutenberg's public catalog file (`gutenberg.org/cache/epub/feeds/pg_catalog.csv`, refreshed at most every 30 days) and book files from Gutenberg's official mirror (`gutenberg.pglaf.org`), one at a time and 2 seconds apart in bulk, as Gutenberg asks of scripts. It never scrapes Gutenberg's website and sends no personal data, conversation text or files anywhere.
+- **Files:** it writes only inside your shelf folder, `~/ReadingShelf` by default (change it with `$READING_SHELF`): the books as plain text, `CATALOG.md`, `BOOKMARKS.md` and the cached catalog.
+- **Your ebooks:** it reads a file only when you ask it to add that file. For a PDF it uses the local `pdftotext` tool, if you have it. Nothing is uploaded.
 - **Copyright:** it only downloads public-domain texts from Gutenberg, and only imports books you already own. It never fetches copyrighted books from anywhere else.
 
 ## Where it works best
 
-Claude Code, and other setups where Claude can run Python, reach gutenberg.org and keep files between sessions. In environments without network access you can still add your own ebooks. Where files don't persist, the shelf may need to be rebuilt each session.
+Claude Code and other setups where Claude can run shell commands, reach gutenberg.org and keep files between sessions. Without network access you can still add your own ebooks. Without a shell, paste or upload the text and Claude reads along from that.
 
 ## Install
 
-**Claude apps (claude.ai, desktop):** download [`reading-companion.zip`](https://github.com/BrianChase515/reading-companion/raw/downloads/reading-companion.zip) and upload it under Customize > Skills. Then ask Claude to "set up my reading shelf."
+**From the Claude directory:** find Reading Companion and add it.
+
+**Claude apps, full edition:** download [`reading-companion.zip`](https://github.com/BrianChase515/reading-companion/raw/downloads/reading-companion.zip) and upload it under Customize > Skills. Then ask Claude to "set up my reading shelf."
 
 **Claude Code**
 ```
 /plugin marketplace add BrianChase515/reading-companion
 /plugin install reading-companion@reading-companion
 ```
-Or copy `skills/reading-companion/` into `~/.claude/skills/`.
+Or copy `skills/reading-companion/` from either branch into `~/.claude/skills/`.
 
-## Use it without Claude
+## Use the full edition's tool without Claude
 
+From the `full` branch:
 ```
 python3 skills/reading-companion/scripts/shelf.py setup --starter
 python3 skills/reading-companion/scripts/shelf.py get "consolation of philosophy"
 python3 skills/reading-companion/scripts/shelf.py read "consolation" --ch 3
-python3 skills/reading-companion/scripts/shelf.py read "consolation" --next
 ```
 
 ## More skills by the same author

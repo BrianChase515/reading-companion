@@ -1,7 +1,7 @@
 {
   "name": "reading-companion",
   "displayName": "Reading Companion",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Read books with Claude as a reading buddy that quotes the real text, from a local shelf of public-domain classics and your own ebooks.",
   "author": { "name": "Brian Chase", "url": "https://github.com/BrianChase515" },
   "homepage": "https://github.com/BrianChase515/reading-companion",
