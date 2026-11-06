@@ -4,7 +4,7 @@ shelf.py - a local bookshelf an AI can actually read from: public-domain classic
 (plus any EPUB/PDF/TXT you own), stored as Markdown, searchable, with bookmarks. Standard library only
 (PDF import also needs `pdftotext`).
 
-Shelf folder: $READING_SHELF, or ~/ReadingShelf
+Shelf folder: $READING_SHELF, or ~/ReadingShelf. Books download from Gutenberg's mirror ($PG_MIRROR).
 
   shelf.py setup [--starter]          create the shelf; --starter downloads the ~125-book starter kit (~120 MB, ~10 min)
   shelf.py list [words]               what's on the shelf (filter by author/title words)
@@ -27,6 +27,8 @@ from html.parser import HTMLParser
 LIB = os.path.expanduser(os.environ.get("READING_SHELF", "~/ReadingShelf"))
 CAT = os.path.join(LIB, "catalog.json"); PGCAT = os.path.join(LIB, ".pg_catalog.csv"); POS = os.path.join(LIB, ".bookmarks.json")
 UA = {"User-Agent": "ReadingShelf/1.0 (personal reading; polite)"}
+# Books come from Project Gutenberg's official mirror, as Gutenberg asks of scripts (gutenberg.org/policy/robot_access.html).
+MIRROR = os.environ.get("PG_MIRROR", "https://gutenberg.pglaf.org").rstrip("/")
 STARTER = [  # ~125 Project Gutenberg ids: philosophy, history, scripture, epic, drama, novels
  1497,1600,1658,1656,1636,1572,1750,1643,1672,1726, 8438,6762,1974,2412, 42930,42931,42932,
  45109,10661,2680,3794,674,23639,58567,785,2808,54161,57342,14328,
@@ -69,17 +71,23 @@ def bookmarks():
 
 # ---------- converters
 class H2M(HTMLParser):
-    def __init__(s): super().__init__(); s.o = []; s.skip = 0; s.h = False
+    """HTML -> Markdown. Headings are collected whole, so <br>, <img> or <span> inside a title can't split it."""
+    def __init__(s): super().__init__(); s.o = []; s.skip = 0; s.h = None
     def handle_starttag(s, t, a):
         if t in ("script", "style", "head"): s.skip += 1
-        elif t in ("h1", "h2", "h3", "h4"): s.o.append("\n\n## "); s.h = True
+        elif t in ("h1", "h2", "h3", "h4"): s.h = []
+        elif s.h is not None: s.h.append(" ")
         elif t in ("p", "div", "blockquote", "li", "tr"): s.o.append("\n\n")
         elif t == "br": s.o.append("\n")
     def handle_endtag(s, t):
         if t in ("script", "style", "head"): s.skip = max(0, s.skip - 1)
-        elif t in ("h1", "h2", "h3", "h4"): s.o.append("\n\n"); s.h = False
+        elif t in ("h1", "h2", "h3", "h4") and s.h is not None:
+            title = re.sub(r"\s+", " ", "".join(s.h)).strip(); s.h = None
+            s.o.append("\n\n## %s\n\n" % title if title else "\n\n")
     def handle_data(s, d):
-        if not s.skip: s.o.append(d.replace("\n", " ") if s.h else d)
+        if s.skip: return
+        if s.h is not None: s.h.append(d)
+        else: s.o.append(d)
     def text(s):
         t = "".join(s.o).replace("\xa0", " "); t = re.sub(r"[ \t]+", " ", t); t = re.sub(r"[ \t]*\n[ \t]*", "\n", t)
         return re.sub(r"\n{3,}", "\n\n", t).strip()
@@ -117,6 +125,7 @@ def shelve(title, author, body, source, gid=None):
     fn = os.path.join(slug(author), slug(title) + ".md")
     if any(b["file"] == fn for b in c): print("already on the shelf: %s — %s" % (author, title)); return
     os.makedirs(os.path.join(LIB, slug(author)), exist_ok=True)
+    body = re.sub(r"^#{1,6}[ \t]+(?=\S)", "## ", body, flags=re.M)   # every heading level becomes a section
     md = "# %s\n\n*%s* — %s\n\n---\n\n%s\n" % (title, author, source, body.strip())
     open(os.path.join(LIB, fn), "w", encoding="utf-8").write(md)
     c.append({"id": gid, "author": author, "title": title, "file": fn, "kb": len(md) // 1024}); save_cat(c)
@@ -141,11 +150,11 @@ def download(gid, rows):
     r = next((r for r in rows if r["Text#"] == str(gid)), None)
     if not r: print("no English Gutenberg text #%s" % gid); return
     title, author, src = re.sub(r"\s+", " ", r["Title"]).strip(), clean_author(r["Authors"]) or "Anonymous", "Project Gutenberg #%s" % gid
-    h = fetch("https://www.gutenberg.org/cache/epub/%s/pg%s-images.html" % (gid, gid))   # HTML keeps real chapter headings
+    h = fetch("%s/cache/epub/%s/pg%s-images.html" % (MIRROR, gid, gid))   # HTML keeps real chapter headings
     if h:
         body = strip_pg(html_md(re.sub(r'<span class="pagenum">.*?</span>', "", h, flags=re.S)))
         if len(body) > 2000: return shelve(title, author, body, src, int(gid))
-    raw = fetch("https://www.gutenberg.org/cache/epub/%s/pg%s.txt" % (gid, gid))
+    raw = fetch("%s/cache/epub/%s/pg%s.txt" % (MIRROR, gid, gid))
     if not raw: print("couldn't download #%s" % gid); return
     shelve(title, author, strip_pg(raw), src, int(gid))
 
@@ -260,7 +269,7 @@ def main():
         pos = bookmarks()
         for b in c:
             if b["file"] in pos:
-                n = os.path.getsize(os.path.join(LIB, b["file"])); print("%3d%%  %s — %s" % (100 * pos[b["file"]] // max(1, n), b["author"][:28], b["title"][:60]))
+                n = len(load(b)); print("%3d%%  %s — %s" % (100 * pos[b["file"]] // max(1, n), b["author"][:28], b["title"][:60]))
         if not pos: print("no bookmarks yet")
     elif cmd == "remove":
         b = pick(c, a[2]); done = os.path.join(LIB, "_inbox", "removed"); os.makedirs(done, exist_ok=True)

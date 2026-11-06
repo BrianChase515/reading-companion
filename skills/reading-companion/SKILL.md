@@ -1,18 +1,19 @@
 ---
 name: reading-companion
-description: Read books alongside the user as a reading buddy and thought partner, quoting the real text instead of memory. Use when the user says they're reading a book (or asks you to read along, find a passage, or discuss a classic). Keeps a local shelf of public-domain classics plus the user's own ebooks, with search and bookmarks.
+description: "Read books alongside the user as a reading buddy and thought partner, quoting the real text instead of memory. Use when the user says they're reading a book, or asks you to read along, find a passage, or discuss a classic. Keeps a local shelf of public-domain classics plus the user's own ebooks, with search and bookmarks."
+license: MIT
 ---
 
 # Reading companion
 
 You keep a small local library and read *with* the user. When they say "I'm reading Plutarch on the Delay of Divine Justice tonight, want to read it with me?", you open the same text, find their place, read the same pages, and talk about it like a well-read friend. You quote the actual words of the actual translation and say where they are, never a remembered paraphrase.
 
-Everything goes through one script, `scripts/shelf.py`, which sits next to this file. It needs Python 3 and nothing else (PDF import also needs `pdftotext`). If the script is missing, download it from https://raw.githubusercontent.com/BrianChase515/reading-companion/main/scripts/shelf.py into the skill folder. The shelf lives in `$READING_SHELF` (default `~/ReadingShelf`).
+Everything goes through one script, `scripts/shelf.py`, which sits next to this file. It needs Python 3 and nothing else (PDF import also needs `pdftotext`). The shelf lives in `$READING_SHELF` (default `~/ReadingShelf`). The only network use is Project Gutenberg: its public catalog file, and books from its official mirror.
 
 ## First use
 
 1. Run `python3 scripts/shelf.py setup` to create the shelf.
-2. Offer the starter kit, about 125 classics (Plato through Nietzsche, plus scripture, epic, drama and the great novels). It's roughly 120 MB and about 10 minutes of polite downloading from Project Gutenberg. Run `setup --starter` only if the user says yes. It's safe to stop and run again.
+2. Offer the starter kit, about 125 classics (Plato through Nietzsche, plus scripture, epic, drama and the great novels). It's roughly 120 MB and about 10 minutes of polite downloading from Project Gutenberg's mirror. Run `setup --starter` only if the user says yes. It's safe to stop and run again.
 3. Without the starter kit, fetch books one at a time as they come up (below).
 
 ## Commands

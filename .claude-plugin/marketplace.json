@@ -1,0 +1,12 @@
+{
+  "name": "reading-companion",
+  "description": "Reading Companion, a Claude skill by Brian Chase.",
+  "owner": { "name": "Brian Chase", "url": "https://github.com/BrianChase515" },
+  "plugins": [
+    {
+      "name": "reading-companion",
+      "source": "./",
+      "description": "Read books with Claude as a reading buddy that quotes the real text."
+    }
+  ]
+}
